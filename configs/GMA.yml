@@ -1,5 +1,5 @@
 #### general settings
-exp_name: RAFT-cvo
+exp_name: GMA-cvo
 gpus: [0,1]
 
 #### training settings
@@ -19,7 +19,7 @@ add_noise: true
 log_freq: 100
 valid_freq: 1000 # iters
 image_size: [256, 256]
-flow_pretrained: checkpoints/raft-things.pth
+flow_pretrained: checkpoints/gma-things.pth
 
 #### dataset settings
 train_sample: ~
