@@ -141,7 +141,7 @@ def train(args):
         tofile=True,
     )
     logger = logging.getLogger("base")  # base logger
-    tb_logger = tbLogger(args.log_dir)  # tensorboard
+    # tb_logger = tbLogger(args.log_dir)  # tensorboard
 
     ############# Build Data #############
     keys = ["fflows", "bflows", "delta_fflows", "delta_bflows"]
@@ -197,7 +197,7 @@ def train(args):
         optimizer.load_state_dict(state["optimizer"])
         scheduler.load_state_dict(state["scheduler"])
         current_step = state["iter"]
-        tb_logger.set_step(current_step)
+        # tb_logger.set_step(current_step)
     else:
         current_step = 0
 
@@ -257,7 +257,7 @@ def train(args):
             scaler.step(optimizer)
             scaler.update()
             scheduler.step()
-            tb_logger.step()
+            # tb_logger.step()
             timer.tick()
 
             ############# log #############
@@ -270,9 +270,9 @@ def train(args):
                     f"<epoch:{epoch:2d}, iter:{current_step:6,d}, t:{avg_time:.2f}s, eta:{eta_time:.2f}h, loss:{avg_loss:.3f}, epe:{avg_epe:.3f}>"
                 )
                 losses, epes = [], []
-                tb_logger.write_dict(
-                    {"loss": avg_loss, "epe": avg_epe, "eta": eta_time}
-                )
+                # tb_logger.write_dict(
+                #     {"loss": avg_loss, "epe": avg_epe, "eta": eta_time}
+                # )
 
             ############# validation #############
             if current_step % args.valid_freq == 0 or current_step == num_steps - 1:
@@ -280,7 +280,7 @@ def train(args):
                 model.eval()
                 metric_list = []
                 val_result = {}
-                for id, data in tqdm(enumerate(valid_loader), total=args.valid_sample):
+                for id, data in tqdm(enumerate(valid_loader), total=len(valid_loader)):
                     data = preprocess(data)
                     input = data["imgs"]
                     label = data["bflows"]
@@ -299,8 +299,8 @@ def train(args):
                         avg_metric["val_" + k].append(v)
                 avg_metric = {k: sum(v) / len(v) for k, v in avg_metric.items()}
                 save_ckpt(epoch, current_step, scheduler, optimizer, model, args, True)
-                tb_logger.write_dict(avg_metric)  # XXX
-                tb_logger.write_dict({"val_loss": loss})  # XXX
+                # tb_logger.write_dict(avg_metric)  # XXX
+                # tb_logger.write_dict({"val_loss": loss})  # XXX
                 epe = avg_metric["val_epe"]
 
                 ############# if new best #############
@@ -334,11 +334,16 @@ def train(args):
                     "Validation EPE: %.3f, current best EPE: %.3f(step: %s)"
                     % (epe, best_val_epe, best_val_step)
                 )
-                send_message(f"Iter:{current_step:6,d}, loss:{loss:.3f}")
+                send_message(
+                    f"Iter {current_step:06,d}, EPE: {epe:.3f}, Loss: {loss:.3f}, ETA: {eta_time:.3f}h"
+                )
 
             model.train()
 
-    tb_logger.close()
+        send_message(
+            f"Finish Epoch {epoch:03d}, EPE: {epe:.3f}, Loss: {loss:.3f}, ETA: {eta_time:.3f}h"
+        )
+    # tb_logger.close()
     send_message("Finish Training!")
     torch.save(model.state_dict(), "%s/final.pth" % args.ckpt_dir)
     logger.info("Finish training")
