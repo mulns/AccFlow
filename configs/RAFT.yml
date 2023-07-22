@@ -7,7 +7,7 @@ exp_name: RAFT-cvo
 
 # We finetune on the combined clean and final passes of the training set, with ~100K iters.
 epochs: 60 
-valid_freq: 500 # iters
+valid_freq: 1000 # iters
 lr: !!float 1.2e-4
 wdecay: !!float 1.0e-5
 epsilon: !!float 1.0e-8
