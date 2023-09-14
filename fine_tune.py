@@ -112,23 +112,6 @@ def save_ckpt(step, scheduler, optimizer, model, args, latest=True):
     torch.save(state_dict, state)
 
 
-def send_message(message, step=0):
-    if step % MESSAGE_FREQ == 0:
-        headers = {
-            "Authorization": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOjI5NDM5LCJ1dWlkIjoiOWJhNjA5MDYtOTkzMS00NGU5LTg5ODItOGRlYTJlZmI0ODFiIiwiaXNfYWRtaW4iOmZhbHNlLCJpc19zdXBlcl9hZG1pbiI6ZmFsc2UsInN1Yl9uYW1lIjoiIiwidGVuYW50IjoiYXV0b2RsIiwidXBrIjoiIn0.a_Xte9zi4NOzjyyDmzpsQFodW9rUOPU5ySHySR5CC8tvkCsl18aDyYkvD82I7QSfrGtA2IYxKonzlQMGZx8iWA"
-        }
-        resp = requests.post(
-            "https://www.autodl.com/api/v1/wechat/message/send",
-            json={
-                "title": "AccFlow",
-                "name": f"RAFT-CVO: {message}",
-                "content": message,
-            },
-            headers=headers,
-        )
-    # print(resp.content.decode())
-
-
 def train(args):
     os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([str(x) for x in args.gpus])
     args = set_default(args)
@@ -161,7 +144,7 @@ def train(args):
     sample_per_epoch = train_samples // args.batch + 1
     num_steps = sample_per_epoch * args.epochs
     args.num_steps = num_steps
-    send_message("Begin Training")
+
     logger.info(
         "Train on %d samples with batch %d, %d iters/epoch, %d iters in total",
         train_samples,
@@ -333,18 +316,12 @@ def train(args):
                     "Validation EPE: %.3f, current best EPE: %.3f(step: %s)"
                     % (epe, best_val_epe, best_val_step)
                 )
-                send_message(
-                    f"Epoch {epoch:02d}, EPE: {epe:.2f}, Loss: {loss:.2f}, ETA: {eta_time:.3f}h",
-                    current_step,
-                )
 
             model.train()
 
-        send_message(
-            f"Finish Epoch {epoch:03d}, EPE: {epe:.3f}, Loss: {loss:.3f}, ETA: {eta_time:.3f}h"
-        )
+
     # tb_logger.close()
-    send_message("Finish Training!")
+
     torch.save(model.state_dict(), "%s/final.pth" % args.ckpt_dir)
     logger.info("Finish training")
 
