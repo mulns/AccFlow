@@ -2,17 +2,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .update import GMAUpdateBlock
-from .extractor import BasicEncoder
 from .corr import CorrBlock
-from .utils.utils import coords_grid, upflow8, backwarp
+from .extractor import BasicEncoder
 from .modules import Attention
+from .update import GMAUpdateBlock
+from .utils.utils import backwarp, coords_grid, upflow8
 
 autocast = torch.cuda.amp.autocast
 
 
 class RAFTGMA(nn.Module):
-
     def __init__(self, args):
         super().__init__()
         self.args = args
@@ -22,22 +21,24 @@ class RAFTGMA(nn.Module):
         args.corr_levels = 4
         args.corr_radius = 4
 
-        if 'dropout' not in self.args:
+        if "dropout" not in self.args:
             self.args.dropout = 0
 
         # feature network, context network, and update block
-        self.fnet = BasicEncoder(output_dim=256,
-                                 norm_fn='instance',
-                                 dropout=args.dropout)
-        self.cnet = BasicEncoder(output_dim=hdim + cdim,
-                                 norm_fn='batch',
-                                 dropout=args.dropout)
+        self.fnet = BasicEncoder(
+            output_dim=256, norm_fn="instance", dropout=args.dropout
+        )
+        self.cnet = BasicEncoder(
+            output_dim=hdim + cdim, norm_fn="batch", dropout=args.dropout
+        )
         self.update_block = GMAUpdateBlock(self.args, hidden_dim=hdim)
-        self.att = Attention(args=self.args,
-                             dim=cdim,
-                             heads=self.args.num_heads,
-                             max_pos_size=160,
-                             dim_head=cdim)
+        self.att = Attention(
+            args=self.args,
+            dim=cdim,
+            heads=self.args.num_heads,
+            max_pos_size=160,
+            dim_head=cdim,
+        )
 
     def freeze_bn(self):
         for m in self.modules():
@@ -45,7 +46,7 @@ class RAFTGMA(nn.Module):
                 m.eval()
 
     def initialize_flow(self, img):
-        """ Flow is represented as difference between two coordinate grids flow = coords1 - coords0"""
+        """Flow is represented as difference between two coordinate grids flow = coords1 - coords0"""
         N, C, H, W = img.shape
         coords0 = coords_grid(N, H // 8, W // 8).to(img.device)
         coords1 = coords_grid(N, H // 8, W // 8).to(img.device)
@@ -54,7 +55,7 @@ class RAFTGMA(nn.Module):
         return coords0, coords1
 
     def upsample_flow(self, flow, mask):
-        """ Upsample flow field [H/8, W/8, 2] -> [H, W, 2] using convex combination """
+        """Upsample flow field [H/8, W/8, 2] -> [H, W, 2] using convex combination"""
         N, _, H, W = flow.shape
         mask = mask.view(N, 1, 9, 8, 8, H, W)
         mask = torch.softmax(mask, dim=2)
@@ -66,14 +67,8 @@ class RAFTGMA(nn.Module):
         up_flow = up_flow.permute(0, 1, 4, 2, 5, 3)
         return up_flow.reshape(N, 2, 8 * H, 8 * W)
 
-    def forward(self,
-                image1,
-                image2,
-                iters=12,
-                flow_init=None,
-                test_mode=False,
-                return_emap=False):
-        """ Estimate optical flow between pair of frames """
+    def forward(self, image1, image2, iters=12, flow_init=None):
+        """Estimate optical flow between pair of frames"""
 
         # image1 = 2 * (image1 / 255.0) - 1.0
         # image2 = 2 * (image2 / 255.0) - 1.0
@@ -113,7 +108,8 @@ class RAFTGMA(nn.Module):
             flow = coords1 - coords0
             with autocast(enabled=self.args.mixed_precision):
                 net, up_mask, delta_flow = self.update_block(
-                    net, inp, corr, flow, attention)
+                    net, inp, corr, flow, attention
+                )
 
             # F(t+1) = F(t) + \Delta(t)
             coords1 = coords1 + delta_flow
@@ -126,11 +122,4 @@ class RAFTGMA(nn.Module):
 
             flow_predictions.append(flow_up)
 
-        if return_emap:
-            emap = torch.square(backwarp(fmap2, coords1 - coords0) - fmap1)
-            return coords1 - coords0, flow_predictions, emap
-
-        if test_mode:
-            return coords1 - coords0, flow_up
-
-        return flow_predictions
+        return flow_up

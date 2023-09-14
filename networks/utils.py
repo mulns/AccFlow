@@ -5,25 +5,29 @@ from scipy import interpolate
 
 
 class InputPadder:
-    """ Pads images such that dimensions are divisible by 8 """
+    """Pads images such that dimensions are divisible by 8"""
 
-    def __init__(self, dims, mode='sintel'):
+    def __init__(self, dims, mode="sintel"):
         self.ht, self.wd = dims[-2:]
         pad_ht = (((self.ht // 8) + 1) * 8 - self.ht) % 8
         pad_wd = (((self.wd // 8) + 1) * 8 - self.wd) % 8
-        if mode == 'sintel':
-            self._pad = [pad_wd//2, pad_wd - pad_wd //
-                         2, pad_ht//2, pad_ht - pad_ht//2]
+        if mode == "sintel":
+            self._pad = [
+                pad_wd // 2,
+                pad_wd - pad_wd // 2,
+                pad_ht // 2,
+                pad_ht - pad_ht // 2,
+            ]
         else:
-            self._pad = [pad_wd//2, pad_wd - pad_wd//2, 0, pad_ht]
+            self._pad = [pad_wd // 2, pad_wd - pad_wd // 2, 0, pad_ht]
 
     def pad(self, *inputs):
-        return [F.pad(x, self._pad, mode='replicate') for x in inputs]
+        return [F.pad(x, self._pad, mode="replicate") for x in inputs]
 
     def unpad(self, x):
         ht, wd = x.shape[-2:]
-        c = [self._pad[2], ht-self._pad[3], self._pad[0], wd-self._pad[1]]
-        return x[..., c[0]:c[1], c[2]:c[3]]
+        c = [self._pad[2], ht - self._pad[3], self._pad[0], wd - self._pad[1]]
+        return x[..., c[0] : c[1], c[2] : c[3]]
 
 
 def forward_interpolate(flow):
@@ -48,21 +52,23 @@ def forward_interpolate(flow):
     dy = dy[valid]
 
     flow_x = interpolate.griddata(
-        (x1, y1), dx, (x0, y0), method='nearest', fill_value=0)
+        (x1, y1), dx, (x0, y0), method="nearest", fill_value=0
+    )
 
     flow_y = interpolate.griddata(
-        (x1, y1), dy, (x0, y0), method='nearest', fill_value=0)
+        (x1, y1), dy, (x0, y0), method="nearest", fill_value=0
+    )
 
     flow = np.stack([flow_x, flow_y], axis=0)
     return torch.from_numpy(flow).float()
 
 
-def bilinear_sampler(img, coords, mode='bilinear', mask=False):
-    """ Wrapper for grid_sample, uses pixel coordinates """
+def bilinear_sampler(img, coords, mode="bilinear", mask=False):
+    """Wrapper for grid_sample, uses pixel coordinates"""
     H, W = img.shape[-2:]
     xgrid, ygrid = coords.split([1, 1], dim=-1)
-    xgrid = 2*xgrid/(W-1) - 1
-    ygrid = 2*ygrid/(H-1) - 1
+    xgrid = 2 * xgrid / (W - 1) - 1
+    ygrid = 2 * ygrid / (H - 1) - 1
 
     grid = torch.cat([xgrid, ygrid], dim=-1)
     img = F.grid_sample(img, grid, align_corners=True)
@@ -75,25 +81,26 @@ def bilinear_sampler(img, coords, mode='bilinear', mask=False):
 
 
 def coords_grid(batch, ht, wd, device):
-    coords = torch.meshgrid(torch.arange(
-        ht, device=device), torch.arange(wd, device=device))
+    coords = torch.meshgrid(
+        torch.arange(ht, device=device), torch.arange(wd, device=device)
+    )
     coords = torch.stack(coords[::-1], dim=0).float()
     return coords[None].repeat(batch, 1, 1, 1)
 
 
-def upflow8(flow, mode='bilinear'):
+def upflow8(flow, mode="bilinear"):
     new_size = (8 * flow.shape[2], 8 * flow.shape[3])
     return 8 * F.interpolate(flow, size=new_size, mode=mode, align_corners=True)
 
 
-def backwarp(image, flow, interp_mode='bilinear', padding_mode='zeros'):
-    '''Backward warping.
+def backwarp(image, flow, interp_mode="bilinear", padding_mode="zeros"):
+    """Backward warping.
     Inputs:
         image: (N,C,H,W)
         flow: (N,2,H,W)
     Outputs:
         A tensor in (N,C,H,W)
-    '''
+    """
     N, C, H, W = image.size()
     # mesh grid
     xx = torch.arange(0, W).view(1, -1).repeat(H, 1)
@@ -111,6 +118,7 @@ def backwarp(image, flow, interp_mode='bilinear', padding_mode='zeros'):
     vgrid[:, 1, :, :] = 2.0 * vgrid[:, 1, :, :] / max(H - 1, 1) - 1.0
 
     vgrid = vgrid.permute(0, 2, 3, 1)  # B H,W,C
-    output = F.grid_sample(image, vgrid, mode=interp_mode,
-                           padding_mode=padding_mode, align_corners=True)
+    output = F.grid_sample(
+        image, vgrid, mode=interp_mode, padding_mode=padding_mode, align_corners=True
+    )
     return output

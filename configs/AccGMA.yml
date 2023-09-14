@@ -1,0 +1,27 @@
+#### general settings
+exp_name: Acc+GMA
+gpus: [0,1]
+
+#### training settings
+
+# We finetune on the combined clean and final passes of the training set, with ~100K iters.
+epochs: 60 
+lr: !!float 1.2e-4
+wdecay: !!float 1.0e-5
+epsilon: !!float 1.0e-8
+mixed_precision: true
+batch_per_gpu: 6
+loss_type: L1
+clip: 1.0
+add_noise: true
+# Above settings follow the RAFT.
+
+log_freq: 100
+valid_freq: 1000 # iters
+image_size: [256, 256]
+flow_pretrained: checkpoints/gma-things.pth
+
+#### dataset settings
+train_sample: ~
+valid_sample: 500
+visual_samples: [0, 1, 2]

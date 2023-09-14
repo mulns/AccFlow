@@ -1,13 +1,17 @@
 import os
 import os.path as osp
 from collections import OrderedDict
+from glob import glob
 
+import cv2
 import lmdb
 import numpy as np
 import pyarrow as pa
 import torch
 import torch.utils.data as data
 from torch.utils.data import DataLoader
+
+from utils.frame_utils import readFlow
 
 from .augmentor import FlowAugmentor
 
@@ -154,4 +158,79 @@ def fetch_valid_dataloader(keys, split="clean", batch=1):
         num_workers=0,
         drop_last=False,
     )
+    return dataloader, dataset
+
+
+class High_Speed_Sintel(data.Dataset):
+    def __init__(self, data_dir, interv, blacklist=[]):
+        super(High_Speed_Sintel, self).__init__()
+
+        # set data dir
+        self.data_dir = data_dir
+        self.interv = interv
+        self.sample_list = [
+            osp.join(data_dir, x)
+            for x in sorted(os.listdir(data_dir))
+            if x not in blacklist
+        ]
+
+    def __getitem__(self, index):
+        sample_dict = {}
+        sintel_ori_path = osp.join(self.sample_list[index], "2_imgs")
+        sintel_hs_path = osp.join(self.sample_list[index], "43_imgs")
+
+        sintel_ori_list = sorted(glob(osp.join(sintel_ori_path, "*.png"))) + sorted(
+            glob(osp.join(sintel_ori_path, "*.jpg"))
+        )
+        sintel_hs_list = sorted(glob(osp.join(sintel_hs_path, "*.png"))) + sorted(
+            glob(osp.join(sintel_hs_path, "*.jpg"))
+        )
+        gt_flow = glob(osp.join(self.sample_list[index], "*.flo"))[0]
+        occ_mask = glob(osp.join(self.sample_list[index], "*.png"))[0]
+
+        # gt flow
+        gt_flow = readFlow(gt_flow)
+        gt_flow = totensor(gt_flow)
+        sample_dict["gt_flow"] = gt_flow
+
+        # occ mask
+        occ_mask = totensor(cv2.imread(occ_mask)[..., 0:1])
+        sample_dict["occ_mask"] = occ_mask / 255.0
+
+        # original sintel images: 0~255,(C,436,1024)
+        img1 = totensor(cv2.imread(sintel_ori_list[0])[..., ::-1].copy())
+        img2 = totensor(cv2.imread(sintel_ori_list[1])[..., ::-1].copy())
+        sample_dict["sintel_imgs"] = [img1, img2]
+
+        # high-speed sintel images: 0~255,(C,436,1024)
+        imgs_hs = []
+        for i in range(0, len(sintel_hs_list), self.interv):
+            imgs_hs.append(
+                totensor(
+                    cv2.resize(
+                        cv2.imread(sintel_hs_list[i])[..., ::-1].copy(), (1024, 436)
+                    )
+                )
+            )
+        sample_dict["hs_sintel_imgs"] = imgs_hs  # list: img0,img7...img42
+
+        return sample_dict
+
+    def __len__(self):
+        return len(self.sample_list)
+
+
+def fetch_sintel_dataloader(data_root, interv=6, batch=10, blacklist=[]):
+    """Create the data loader"""
+
+    dataset = High_Speed_Sintel(data_root, interv, blacklist)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch,
+        pin_memory=True,
+        shuffle=False,
+        num_workers=0,
+        drop_last=False,
+    )
+
     return dataloader, dataset
