@@ -40,13 +40,22 @@ Here shows the structure of the training file:
     ├── 11405_xxx
     ...
     ├── __valid_keys__: [imgs, imgs_blur, ..., delta_bflows]
-    └── __keys__: [...] # All the keys in this file
+    └── __keys__: [...] # All the data keys in this file
 
 The test file `CVO_test.lmdb` shares similar structure. 
 All the arrays in a list is concatenated along the channel dimension.
 
-### Citation
+### Download Links:
+*Curretly, we only provide Baidu Netdisk links, other platforms will be included later*
 
+**Split Compressed files:**
 
+[CVO-test](https://pan.baidu.com/s/1nHwJiqlXMwPyD4DRPVioUw?pwd=7w27) (*Extracting Code: 7w27*)
 
-### License
+[CVO-train](https://pan.baidu.com/s/1vyc7ZAwfvWwmrXjmXmixDw?pwd=9s6c) (*Extracting Code: 9s6c*)
+
+**Uncompressed LMDB files:**
+
+[CVO-test](https://pan.baidu.com/s/1oTfVUfdgXemve3ocrKhL_A?pwd=vii9) (*Extracting Code: vii9*)
+
+[CVO-train](https://pan.baidu.com/s/1Nz2lH3r4y5iC__PQKY6ioA?pwd=akep) (*Extracting Code: akep*)
