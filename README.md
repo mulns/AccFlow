@@ -13,9 +13,8 @@
 
 ## Requirements
 ```shell
-conda create --name accflow
+conda create -n accflow -f environment.yml
 conda activate accflow
-pip install -r requirements.txt
 ```
 
 ## Models
