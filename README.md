@@ -13,7 +13,7 @@
 
 ## Requirements
 ```shell
-conda create -n accflow -f environment.yml
+conda env create -f environment.yml
 conda activate accflow
 ```
 
