@@ -54,7 +54,7 @@ All the arrays in a list is concatenated along the channel dimension.
 
 [CVO-train](https://pan.baidu.com/s/1vyc7ZAwfvWwmrXjmXmixDw?pwd=9s6c) (*Extracting Code: 9s6c*)
 
-[OneDrive Link](https://1drv.ms/f/s!AkDWlTIB7xY4ga9iQ-i5cvY-Fm0UlA?e=SQnb9a)
+[HuggingFace Site](https://1drv.ms/f/s!AkDWlTIB7xY4ga9iQ-i5cvY-Fm0UlA?e=SQnb9a)
 
 **Uncompressed LMDB files:**
 
